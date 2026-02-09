@@ -1,6 +1,6 @@
 # OpenAPI Client Generator
 
-A GitOps repository providing a reusable GitHub Actions workflow for generating and publishing OpenAPI clients to npm.
+A repository providing a reusable GitHub Actions workflow for generating and publishing OpenAPI clients to npm.
 
 ## Overview
 
