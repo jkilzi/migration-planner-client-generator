@@ -1,4 +1,5 @@
 [
   "kubev2v/migration-planner",
-  "kubev2v/assisted-migration-agent"
+  "kubev2v/assisted-migration-agent",
+  "redhat-ecosystem-engineering/petstore-client-test"
 ]
