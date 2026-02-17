@@ -71,8 +71,9 @@ This workflow uses **npm Trusted Publishing (OIDC)** as the primary authenticati
 
 | Secret | Required | Description |
 |--------|----------|-------------|
-| `ALLOWED_REPOS` | Yes | JSON array of authorized repository names |
 | `NPM_TOKEN` | No | Only needed for local testing with act-cli (OIDC fallback) |
+
+Authorization is controlled by `.github/allowed_repos.json` in this repository (see [Authorization Model](#authorization-model)).
 
 ## Generator Configuration
 
@@ -96,26 +97,27 @@ These settings match the configuration in [kubev2v/migration-planner-ui](https:/
 The workflow includes a mandatory authorization check before generating and publishing clients.
 
 1. **Self-Authorization**: Calls from this repository (`kubev2v/migration-planner-client-generator`) are automatically authorized for CI/testing purposes
-2. **Secret-based Allowlist**: External repositories must be listed in the `ALLOWED_REPOS` secret (JSON array)
+2. **File-based Allowlist**: External repositories must be listed in `.github/allowed_repos.json` in this repository (source of truth)
 3. **Exact Match**: Uses `jq` for precise string matching (no partial matches)
 4. **Fail-Fast**: Unauthorized requests are rejected before any generation occurs
 
-### Configuring Authorization
+The workflow fetches the allowlist from the `main` branch at run time, so updates take effect as soon as they are merged.
 
-Set the `ALLOWED_REPOS` secret in this repository with a JSON array of external repositories:
+### Adding an Authorized Repository
+
+Edit `.github/allowed_repos.json` in this repository and add the repo to the JSON array:
 
 ```json
-["kubev2v/migration-planner", "kubev2v/migration-planner-ui"]
+["kubev2v/migration-planner", "kubev2v/assisted-migration-agent"]
 ```
 
-> **Note**: You don't need to add this repository to `ALLOWED_REPOS` - it's automatically authorized.
+> **Note**: You don't need to add this repository to the file—it's automatically authorized.
 
 ### Security Features
 
-- Allowlist is stored as a secret (never exposed in logs or workflow file)
+- Single source of truth in the repo; only maintainers can change the list
 - Exact string matching prevents partial name attacks
 - JSON format is validated before use
-- Error messages don't reveal which repos are authorized
 
 ## Local Development
 
@@ -140,11 +142,23 @@ make test-publish
 make clean
 ```
 
+### Allowlist tests (no Docker)
+
+Run allowlist validation and authorize logic tests without act/Docker:
+
+```bash
+make test-allowlist
+```
+
+These tests validate `.github/allowed_repos.json` (valid JSON, array of strings) and that the same allow/deny logic as the workflow behaves correctly (same-repo allowed, list lookup, exact match).
+
 ### Make Targets
 
 | Command | Description |
 |---------|-------------|
-| `make test` | Run workflow in dry-run mode (tests generation/build only) |
+| `make test` | Run workflow in dry-run mode via act (tests generation/build only) |
+| `make test-allowlist` | Run allowlist and authorize logic tests (no Docker) |
+| `make test-all` | Run test-allowlist then make test |
 | `make test-publish` | Run workflow with actual npm publishing + cleanup |
 | `make test-verbose` | Run workflow with verbose output |
 | `make setup-secrets` | Create `.secrets` file template |
@@ -166,12 +180,16 @@ When enabled, test packages are automatically unpublished after successful publi
 ```
 .
 ├── .github/
+│   ├── allowed_repos.json             # Allowed callers (source of truth)
 │   └── workflows/
 │       ├── generate-and-publish.yml   # Reusable workflow
 │       └── test.yml                   # CI test workflow
+├── tests/
+│   ├── validate_allowed_repos.sh      # Validate allowlist JSON
+│   └── test_authorize_logic.sh       # Test authorize allow/deny logic
 ├── .actrc                             # act-cli configuration
 ├── .gitignore                         # Ignores generated-client/, secrets, etc.
-├── Makefile                           # Local testing commands (make test, make clean)
+├── Makefile                           # Local testing commands (make test, make test-allowlist, etc.)
 ├── AGENTS.md                          # AI agent guidelines
 ├── LICENSE                            # Apache-2.0
 └── README.md                          # This file
